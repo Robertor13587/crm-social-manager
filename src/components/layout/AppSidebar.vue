@@ -354,6 +354,12 @@ const loadMetaPage = async (force: boolean = false) => {
     }
     metaLinkedDispatched.value = false
   }
+
+  // Tutti i retry esauriti senza successo: pulisce lo stato "collegamento in corso"
+  // così la sidebar non rimane bloccata per 20 minuti
+  try { localStorage.removeItem('metaOAuthStartAt') } catch {}
+  metaOAuthStartedAt.value = null
+
   })().finally(() => {
     if (runId === metaLoadRunId) {
       metaLoadPromise = null
