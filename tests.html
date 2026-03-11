@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <title>Test Endpoints — WA/IG/FB</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;line-height:1.5;margin:20px;color:#111}
+    h1{font-size:20px;margin:0 0 12px}
+    h2{font-size:16px;margin:24px 0 8px}
+    fieldset{border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:16px}
+    label{display:block;margin:6px 0 2px;font-size:12px;color:#333}
+    input,textarea,select{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px}
+    button{padding:8px 12px;border:1px solid #0077ff;background:#0077ff;color:#fff;border-radius:6px;font-size:13px;cursor:pointer}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .row{display:flex;gap:8px;align-items:center}
+    .out{white-space:pre-wrap;background:#fafafa;border:1px solid #eee;border-radius:8px;padding:10px;min-height:80px}
+    .small{font-size:12px;color:#666}
+  </style>
+  <script>
+    async function callApi(method, url, headers={}, body=null){
+      const opts = { method, headers }
+      if(body){ opts.body = typeof body === 'string' ? body : JSON.stringify(body) }
+      const r = await fetch(url, opts)
+      const text = await r.text()
+      return { status: r.status, ok: r.ok, body: text }
+    }
+    function val(id){ return document.getElementById(id).value }
+    function setOut(id, data){ document.getElementById(id).textContent = typeof data === 'string' ? data : JSON.stringify(data,null,2) }
+
+    async function health(){
+      const base = val('base')
+      const r = await callApi('GET', base + '/api/health')
+      setOut('out-health', r.body)
+    }
+    async function healthDb(){
+      const base = val('base')
+      const r = await callApi('GET', base + '/api/health/supabase')
+      setOut('out-healthdb', r.body)
+    }
+
+    // WhatsApp
+    async function waContacts(){
+      const base = val('base')
+      const r = await callApi('GET', base + '/api/whatsapp/contacts')
+      setOut('out-wa-contacts', r.body)
+    }
+    async function waCreateContact(){
+      const base = val('base')
+      const name = val('wa-name'), phone = val('wa-phone')
+      const r = await callApi('POST', base + '/api/whatsapp/contacts', { 'Content-Type':'application/json' }, { name, phone })
+      setOut('out-wa-create', r.body)
+    }
+    async function waSend(){
+      const base = val('base')
+      const to = val('wa-to'), text = val('wa-text')
+      const r = await callApi('POST', base + '/api/whatsapp/send-message', { 'Content-Type':'application/json' }, { to, text })
+      setOut('out-wa-send', r.body)
+    }
+    async function waWebhookChallenge(){
+      const base = val('base')
+      const token = val('wa-verify')
+      const r = await callApi('GET', base + '/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=' + encodeURIComponent(token) + '&hub.challenge=ok')
+      setOut('out-wa-challenge', r.body)
+    }
+    async function waWebhookPost(){
+      const base = val('base')
+      const json = val('wa-body')
+      const sig = val('wa-sig')
+      const headers = { 'Content-Type':'application/json' }
+      if(sig) headers['X-Hub-Signature-256'] = sig
+      const r = await callApi('POST', base + '/api/whatsapp/webhook', headers, json)
+      setOut('out-wa-post', r.body)
+    }
+
+    // Instagram
+    async function igConversations(){
+      const base = val('base')
+      const r = await callApi('GET', base + '/api/instagram/messages')
+      setOut('out-ig-conv', r.body)
+    }
+    async function igMessages(){
+      const base = val('base')
+      const id = val('ig-conv-id')
+      const r = await callApi('GET', base + '/api/instagram/messages/' + encodeURIComponent(id))
+      setOut('out-ig-msg', r.body)
+    }
+    async function igSend(){
+      const base = val('base')
+      const rid = val('ig-recipient'), msg = val('ig-text')
+      const r = await callApi('POST', base + '/api/instagram/send', { 'Content-Type':'application/json' }, { recipient_id: rid, message: msg })
+      setOut('out-ig-send', r.body)
+    }
+    async function igWebhookChallenge(){
+      const base = val('base')
+      const token = val('ig-verify')
+      const r = await callApi('GET', base + '/api/instagram/webhook?hub.mode=subscribe&hub.verify_token=' + encodeURIComponent(token) + '&hub.challenge=ok')
+      setOut('out-ig-challenge', r.body)
+    }
+    async function igWebhookPost(){
+      const base = val('base')
+      const json = val('ig-body')
+      const sig = val('ig-sig')
+      const headers = { 'Content-Type':'application/json' }
+      if(sig) headers['X-Hub-Signature-256'] = sig
+      const r = await callApi('POST', base + '/api/instagram/webhook', headers, json)
+      setOut('out-ig-post', r.body)
+    }
+
+    // Facebook
+    async function fbConversations(){
+      const base = val('base')
+      const r = await callApi('GET', base + '/api/facebook/conversations')
+      setOut('out-fb-conv', r.body)
+    }
+    async function fbMessages(){
+      const base = val('base')
+      const id = val('fb-conv-id')
+      const r = await callApi('GET', base + '/api/facebook/messages/' + encodeURIComponent(id))
+      setOut('out-fb-msg', r.body)
+    }
+    async function fbSend(){
+      const base = val('base')
+      const psid = val('fb-psid'), text = val('fb-text')
+      const r = await callApi('POST', base + '/api/facebook/messages/send', { 'Content-Type':'application/json' }, { recipient_id: psid, text })
+      setOut('out-fb-send', r.body)
+    }
+    async function fbWebhookChallenge(){
+      const base = val('base')
+      const token = val('fb-verify')
+      const r = await callApi('GET', base + '/api/facebook/webhook?hub.mode=subscribe&hub.verify_token=' + encodeURIComponent(token) + '&hub.challenge=ok')
+      setOut('out-fb-challenge', r.body)
+    }
+    async function fbWebhookPost(){
+      const base = val('base')
+      const json = val('fb-body')
+      const sig = val('fb-sig')
+      const headers = { 'Content-Type':'application/json' }
+      if(sig) headers['X-Hub-Signature-256'] = sig
+      const r = await callApi('POST', base + '/api/facebook/webhook', headers, json)
+      setOut('out-fb-post', r.body)
+    }
+  </script>
+</head>
+<body>
+  <h1>Test Endpoints — WhatsApp / Instagram / Facebook</h1>
+  <fieldset>
+    <label for="base">Base URL (es. http://localhost:3001)</label>
+    <input id="base" value="http://localhost:3001" />
+  </fieldset>
+
+  <div class="grid">
+    <fieldset>
+      <h2>Health</h2>
+      <div class="row">
+        <button onclick="health()">GET /api/health</button>
+        <button onclick="healthDb()">GET /api/health/supabase</button>
+      </div>
+      <div class="out" id="out-health"></div>
+      <div class="out" id="out-healthdb"></div>
+    </fieldset>
+
+    <fieldset>
+      <h2>WhatsApp</h2>
+      <label>Verify Token</label>
+      <input id="wa-verify" placeholder="WHATSAPP_WEBHOOK_VERIFY_TOKEN" />
+      <div class="row">
+        <button onclick="waWebhookChallenge()">GET /whatsapp/webhook (challenge)</button>
+      </div>
+      <label>Webhook Body (JSON)</label>
+      <textarea id="wa-body" rows="4">{"object":"whatsapp_business_account","entry":[]}</textarea>
+      <label>Signature (X-Hub-Signature-256)</label>
+      <input id="wa-sig" placeholder="sha256=..." />
+      <div class="row"><button onclick="waWebhookPost()">POST /whatsapp/webhook</button></div>
+      <label>Nuovo contatto</label>
+      <input id="wa-name" placeholder="Nome" />
+      <input id="wa-phone" placeholder="Telefono in E164" />
+      <div class="row"><button onclick="waCreateContact()">POST /whatsapp/contacts</button><button onclick="waContacts()">GET /whatsapp/contacts</button></div>
+      <label>Invio messaggio</label>
+      <input id="wa-to" placeholder="Destinatario (E164)" />
+      <input id="wa-text" placeholder="Testo" />
+      <div class="row"><button onclick="waSend()">POST /whatsapp/send-message</button></div>
+      <div class="out" id="out-wa-challenge"></div>
+      <div class="out" id="out-wa-post"></div>
+      <div class="out" id="out-wa-create"></div>
+      <div class="out" id="out-wa-contacts"></div>
+      <div class="out" id="out-wa-send"></div>
+    </fieldset>
+
+    <fieldset>
+      <h2>Instagram</h2>
+      <label>Verify Token</label>
+      <input id="ig-verify" placeholder="INSTAGRAM_WEBHOOK_VERIFY_TOKEN" />
+      <div class="row"><button onclick="igWebhookChallenge()">GET /instagram/webhook (challenge)</button></div>
+      <label>Webhook Body (JSON)</label>
+      <textarea id="ig-body" rows="4">{"object":"instagram","entry":[]}</textarea>
+      <label>Signature (X-Hub-Signature-256)</label>
+      <input id="ig-sig" placeholder="sha256=..." />
+      <div class="row"><button onclick="igWebhookPost()">POST /instagram/webhook</button></div>
+      <div class="row"><button onclick="igConversations()">GET /instagram/messages</button></div>
+      <label>ID Conversazione</label>
+      <input id="ig-conv-id" placeholder="UUID conversazione" />
+      <div class="row"><button onclick="igMessages()">GET /instagram/messages/:id</button></div>
+      <label>Invio DM</label>
+      <input id="ig-recipient" placeholder="platform_conversation_id" />
+      <input id="ig-text" placeholder="Testo" />
+      <div class="row"><button onclick="igSend()">POST /instagram/send</button></div>
+      <div class="out" id="out-ig-challenge"></div>
+      <div class="out" id="out-ig-post"></div>
+      <div class="out" id="out-ig-conv"></div>
+      <div class="out" id="out-ig-msg"></div>
+      <div class="out" id="out-ig-send"></div>
+    </fieldset>
+
+    <fieldset>
+      <h2>Facebook</h2>
+      <label>Verify Token</label>
+      <input id="fb-verify" placeholder="FACEBOOK_WEBHOOK_VERIFY_TOKEN" />
+      <div class="row"><button onclick="fbWebhookChallenge()">GET /facebook/webhook (challenge)</button></div>
+      <label>Webhook Body (JSON)</label>
+      <textarea id="fb-body" rows="4">{"object":"page","entry":[]}</textarea>
+      <label>Signature (X-Hub-Signature-256)</label>
+      <input id="fb-sig" placeholder="sha256=..." />
+      <div class="row"><button onclick="fbWebhookPost()">POST /facebook/webhook</button></div>
+      <div class="row"><button onclick="fbConversations()">GET /facebook/conversations</button></div>
+      <label>ID Conversazione</label>
+      <input id="fb-conv-id" placeholder="UUID conversazione" />
+      <div class="row"><button onclick="fbMessages()">GET /facebook/messages/:id</button></div>
+      <label>Invio Messenger</label>
+      <input id="fb-psid" placeholder="PSID destinatario" />
+      <input id="fb-text" placeholder="Testo" />
+      <div class="row"><button onclick="fbSend()">POST /facebook/messages/send</button></div>
+      <div class="out" id="out-fb-challenge"></div>
+      <div class="out" id="out-fb-post"></div>
+      <div class="out" id="out-fb-conv"></div>
+      <div class="out" id="out-fb-msg"></div>
+      <div class="out" id="out-fb-send"></div>
+    </fieldset>
+  </div>
+  <p class="small">Nota: per i POST webhook in produzione è richiesta la firma HMAC nell'header `X-Hub-Signature-256`.</p>
+</body>
+</html>

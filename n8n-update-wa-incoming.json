@@ -1,0 +1,75 @@
+{
+  "name": "WA Incoming (POST) - Working",
+  "settings": { "executionOrder": "v1", "availableInMCP": true },
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "meta/whatsapp/webhook", "responseMode": "lastNode", "options": {} },
+      "id": "d4f74458-b62d-4e73-96b1-39aaddeb47a0",
+      "name": "Webhook - WA Incoming (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [144,352],
+      "webhookId": "wa-post-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const entry = $json.body?.entry?.[0];\nif (!entry) return [];\nconst changes = entry.changes?.[0]?.value;\nif (!changes || !changes.messages) return [];\nfunction toE164(raw) { const s = String(raw || ''); const d = s.replace(/\\D/g, ''); return d ? ('+' + d) : s; }\nfunction formatTimestampEuropeRome(epochSeconds) {\n  const d = new Date(epochSeconds * 1000);\n  const fmt = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });\n  const parts = fmt.formatToParts(d);\n  const get = (type) => { const found = parts.find(p => p.type === type); return found && found.value ? found.value : '00'; };\n  return get('year') + '-' + get('month') + '-' + get('day') + ' ' + get('hour') + ':' + get('minute') + ':' + get('second');\n}\nreturn changes.messages.map(m => {\n  const fromE164 = toE164(m.from);\n  const toE164Num = toE164(changes.metadata?.display_phone_number || null);\n  const text = m.text?.body || m.image?.caption || m.audio?.caption || m.document?.caption || null;\n  const ts = formatTimestampEuropeRome(Number(m.timestamp || 0));\n  return { json: { wa_id: m.id, from_phone: fromE164, to_phone: toE164Num, direction: 'incoming', message: text, timestamp: ts } };\n});"
+      },
+      "id": "d802f134-f806-442f-af14-ac19ec2ff60e",
+      "name": "Parse WA Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400,352]
+    },
+    {
+      "parameters": { "table": "wa_messages", "options": {} },
+      "id": "0233907f-f44f-48ca-8e73-1716fc4d17eb",
+      "name": "MySQL - Save Incoming",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2,
+      "position": [656,352],
+      "credentials": { "mySql": { "id": "fe6QRQjQZ4ZfftSa", "name": "MySQL (CRM Social)" } },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $json;\nconst msg = item.message;\nreturn [{ json: { wa_id: item.wa_id, from_phone: item.from_phone, to_phone: item.to_phone, direction: 'incoming', message: msg, timestamp: item.timestamp } }];"
+      },
+      "id": "7c6b2f94-0d5d-4a3e-9b22-07f8f2d8b1e1",
+      "name": "Build Log Payload (WA Inbound)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [656,200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://workflow.robdev.website/webhook/internal/whatsapp/message/log",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "e5a9d3a1-3ac9-4c7c-9c7f-2f0ab7c8c6f0",
+      "name": "HTTP – Log WA Message (Incoming)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [912,200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": { "jsCode": "return [{ json: { status: 'ok' } }];" },
+      "id": "2d0b966c-5957-4a14-9580-869571edf4eb",
+      "name": "Return OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [912,352]
+    }
+  ],
+  "connections": {
+    "Webhook - WA Incoming (POST)": { "main": [[{ "node": "Parse WA Event", "type": "main", "index": 0 }]] },
+    "Parse WA Event": { "main": [[{ "node": "MySQL - Save Incoming", "type": "main", "index": 0 }, { "node": "Build Log Payload (WA Inbound)", "type": "main", "index": 0 }]] },
+    "Build Log Payload (WA Inbound)": { "main": [[{ "node": "HTTP – Log WA Message (Incoming)", "type": "main", "index": 0 }]] },
+    "MySQL - Save Incoming": { "main": [[{ "node": "Return OK", "type": "main", "index": 0 }]] }
+  }
+}

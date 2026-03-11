@@ -1,0 +1,8 @@
+.DS_Store
+/testsprite_tests
+/workflows
+/test-n8n
+*.txt
+/docs
+/supabase/migrations
+*.sql

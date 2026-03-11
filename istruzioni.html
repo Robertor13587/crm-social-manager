@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>DEV-ONLY CHECKLIST – Backend Hetzner + Frontend Hostinger</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0d0d0d;
+            color: #e3e3e3;
+            padding: 30px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #00eaff;
+        }
+
+        code,
+        pre {
+            background: #1b1b1b;
+            padding: 10px;
+            border-radius: 5px;
+            display: block;
+            margin: 10px 0;
+        }
+
+        ul {
+            margin-bottom: 20px;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🔧 DEV-ONLY — INTEGRAZIONE BACKEND (HETZNER) → FRONTEND (HOSTINGER)</h1>
+
+    <p>Documento destinato esclusivamente a TRAE Developer Agents.<br>
+        Obiettivo: collegare il frontend Hostinger all’API backend Hetzner.</p>
+
+    <hr>
+
+    <div class="section">
+        <h2>1. Checklist Pre-Flight</h2>
+
+        <pre>
+[ ] Verificare raggiungibilità HTTPS backend:
+    GET https://socialcrm.robdev.website/health (se non esiste, crearlo)
+[ ] Verificare HTTPS valido (no self-signed)
+[ ] Verificare che Nginx proxy_pass → http://localhost:3001
+[ ] Confermare che PM2 server.js è ONLINE
+[ ] Controllare che la porta 3001 sia accessibile localmente:
+    curl http://localhost:3001
+</pre>
+    </div>
+
+    <div class="section">
+        <h2>2. Endpoint API da usare nel frontend</h2>
+
+        <pre>
+AUTH:
+POST   /auth/login
+
+INBOX:
+GET    /api/inbox
+
+MESSAGGI:
+GET    /api/messages?platform={p}&contact_id={id}
+
+SEND MESSAGE:
+POST   /api/send/whatsapp
+POST   /api/send/instagram
+POST   /api/send/facebook
+
+WEBHOOKS (solo Meta → backend):
+POST   /webhook/instagram
+POST   /webhook/facebook
+POST   /webhook/whatsapp
+</pre>
+
+    </div>
+
+    <div class="section">
+        <h2>3. Configurazione CORS da rispettare</h2>
+
+        <p>Il backend DEVE accettare richieste SOLO dal dominio frontend Hostinger:</p>
+
+        <pre>
+// server.js
+import cors from "cors";
+
+app.use(cors({
+  origin: [
+    "https://app.robdev.website",
+    "http://app.robdev.website"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+</pre>
+
+        <p><b>Checklist Dev:</b></p>
+
+        <pre>
+[ ] Verificare che Hostinger usi HTTPS
+[ ] Verificare che il dominio frontend corrisponda a quello configurato
+[ ] Verificare assenza wildcard * nei CORS
+</pre>
+
+    </div>
+
+    <div class="section">
+        <h2>4. Autenticazione JWT</h2>
+
+        <h3>Flusso richiesto:</h3>
+
+        <pre>
+Frontend → POST /auth/login → Backend genera JWT → 
+Frontend memorizza → tutte le richieste successive includono:
+Authorization: Bearer {token}
+</pre>
+
+        <h3>Validazione obbligatoria per TRAE:</h3>
+
+        <pre>
+[ ] login() deve salvare JWT
+[ ] api() wrapper deve inserire Authorization
+[ ] intercettare 401 → forzare logout
+[ ] token NON va mai inviato via querystring
+</pre>
+
+    </div>
+
+    <div class="section">
+        <h2>5. Wrapper API lato frontend (da implementare)</h2>
+
+        <pre>
+const API_BASE = "https://socialcrm.robdev.website";
+
+async function api(path, options = {}) {
+  const token = localStorage.getItem("jwt_token");
+
+  const res = await fetch(API_BASE + path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token,
+      ...(options.headers || {})
+    }
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("jwt_token");
+    location.href = "/login";
+  }
+
+  return res.json();
+}
+</pre>
+
+        <p><b>Checklist Dev:</b></p>
+        <pre>
+[ ] Wrapper API implementato
+[ ] Error handling integrato
+[ ] Timeout default consigliato: 20s
+[ ] Inserire loader UI durante chiamate
+</pre>
+
+    </div>
+
+    <div class="section">
+        <h2>6. Integrazione Inbox nel Frontend</h2>
+
+        <p>TRAE deve implementare:</p>
+
+        <pre>
+// Caricamento inbox
+const inbox = await api("/api/inbox");
+
+// Render conversazioni in lista
+renderInbox(inbox.conversations);
+</pre>
+
+        <p><b>Checklist Dev:</b></p>
+
+        <pre>
+[ ] UI lista conversazioni
+[ ] Autorefresh ogni 10s
+[ ] Stato “loading” e “empty state”
+</pre>
+
+    </div>
+
+    <div class="section">
+        <h2>7. Integrazione Thread Messaggi</h2>
+
+        <pre>
+const messages = await api(
+  `/api/messages?platform=${platform}&contact_id=${id}`
+);
+
+renderThread(messages);
+</pre>
+
+        <p><b>Checklist Dev:</b></p>
+
+        <pre>
+[ ] Bubbles right (outgoing) / left (incoming)
+[ ] Scroll automatico in fondo
+[ ] Gestione messaggi con media_url
+[ ] Fallback text se mancante
+</pre>
+
+    </div>
+
+    <div class="section">
+        <h2>8. Invio dei Messaggi – UI e API</h2>
+
+        <pre>
+// Esempio WhatsApp
+await api("/api/send/whatsapp", {
+  method: "POST",
+  body: JSON.stringify({
+    to: contactId,
+    text: messageText,
+    mediaUrl: imageUrl // opzionale
+  })
+});
+</pre>
+
+        <p><b>Checklist Dev:</b></p>
+
+        <pre>
+[ ] Validazione campi input
+[ ] Gestione errori backend (es: template non valido)
+[ ] UI: mostrare messaggio subito (optimistic update)
+[ ] Disabilitare pulsante durante invio
+</pre>
+
+    </div>
+
+    <div class="section">
+        <h2>9. Funzioni richieste ai Webhook</h2>
+
+        <p>I webhook Meta NON devono essere consumati dal frontend.<br>
+            Sono gestiti automaticamente dal backend Hetzner.</p>
+
+        <p><b>Checklist Dev:</b></p>
+
+        <pre>
+[ ] NON chiamare i webhook da frontend
+[ ] NON implementare logica webhook lato Hostinger
+[ ] Utilizzare SOLO gli endpoint REST
+</pre>
+
+    </div>
+
+    <div class="section">
+        <h2>10. Controlli su Nginx (per conferma)</h2>
+
+        <h3>Configurazione richiesta:</h3>
+
+        <pre>
+server {
+    server_name socialcrm.robdev.website;
+
+    listen 443 ssl;
+    ssl_certificate     /etc/letsencrypt/live/socialcrm.robdev.website/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/socialcrm.robdev.website/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+    }
+}
+</pre>
+
+        <p><b>Checklist Dev (lettura-sola):</b></p>
+
+        <pre>
+[ ] Verificare che /api/* venga servito da backend
+[ ] Verificare HTTPS valido
+[ ] Verificare nessun redirect loop
+[ ] Verificare che PM2 è in stato ONLINE
+</pre>
+    </div>
+
+    <div class="section">
+        <h2>11. Task Sequenziali per TRAE Developer</h2>
+
+        <ol>
+            <li>Implementare wrapper fetch API</li>
+            <li>Implementare Login UI + JWT store</li>
+            <li>Integrare /api/inbox nella dashboard</li>
+            <li>Integrare /api/messages nel thread</li>
+            <li>Integrare /api/send/* nel message composer</li>
+            <li>Impostare autorefresh inbox (10s)</li>
+            <li>Impostare autorefresh thread (solo se aperto)</li>
+            <li>Gestire errori backend → notifiche UI</li>
+            <li>Testing completo con account Meta reali</li>
+            <li>Scrivere report di validazione a PM</li>
+        </ol>
+
+    </div>
+
+    <div class="section">
+        <h2>12. Deliverables Richiesti a TRAE</h2>
+
+        <pre>
+[ ] frontend.js: wrapper API completo
+[ ] auth.js: login(), logout(), token management
+[ ] inbox.js: fetch + render conversazioni
+[ ] thread.js: fetch + render messaggi + bubbles
+[ ] sendMessage.js: funzioni per tutte le piattaforme
+[ ] UI loader + error handler generici
+[ ] test suite: integrazione API backend
+</pre>
+
+    </div>
+
+    <div class="section">
+        <h2>13. Conclusione – Dev Mode</h2>
+
+        <p>
+            Questo documento definisce TUTTI gli elementi richiesti al team Developer per integrare correttamente il
+            backend Hetzner (Node.js + PM2 + Nginx) con il frontend Hostinger.
+            È pensato per essere eseguito da TRAE come pipeline di sviluppo e integrazione.
+        </p>
+
+    </div>
+
+</body>
+
+</html>
