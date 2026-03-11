@@ -82,6 +82,10 @@ const router = createRouter({
   ]
 })
 
+/** Accetta solo path relativi (iniziano con /) — scarta URL assoluti di altri domini */
+const isSafePath = (value: string | null): value is string =>
+  typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')
+
 router.beforeEach((to, from, next) => {
   const token = authStorage.getToken()
   const role = authStorage.getRole()
@@ -97,8 +101,10 @@ router.beforeEach((to, from, next) => {
   if (roles && (!role || !roles.includes(role))) return next({ name: 'dashboard' })
 
   const postOAuthRedirect = authStorage.getPostOAuthRedirect()
+  // Scarta il valore se è un URL assoluto (es. vecchio dominio in localStorage)
+  if (!isSafePath(postOAuthRedirect)) authStorage.clearPostOAuthRedirect()
   if (
-    postOAuthRedirect &&
+    isSafePath(postOAuthRedirect) &&
     token &&
     postOAuthRedirect !== '/' &&
     to.fullPath !== postOAuthRedirect &&
@@ -109,8 +115,10 @@ router.beforeEach((to, from, next) => {
   }
 
   const postLoginRedirect = authStorage.getPostLoginRedirect()
+  // Scarta il valore se è un URL assoluto (es. vecchio dominio in localStorage)
+  if (!isSafePath(postLoginRedirect)) authStorage.clearPostLoginRedirect()
   if (
-    postLoginRedirect &&
+    isSafePath(postLoginRedirect) &&
     token &&
     postLoginRedirect !== '/' &&
     to.fullPath !== postLoginRedirect &&

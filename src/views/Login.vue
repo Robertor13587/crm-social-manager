@@ -104,6 +104,10 @@ const loading  = ref(false)
 const router   = useRouter()
 const authStore = useAuthStore()
 
+/** Accetta solo path relativi — scarta URL assoluti di altri domini */
+const isSafePath = (v: string | null): v is string =>
+  typeof v === 'string' && v.startsWith('/') && !v.startsWith('//')
+
 const login = async () => {
   error.value   = ''
   loading.value = true
@@ -111,14 +115,14 @@ const login = async () => {
     await authStore.login(email.value, password.value)
 
     const postOAuthRedirect = authStore.getPostOAuthRedirect()
-    if (postOAuthRedirect) {
-      authStore.clearPostOAuthRedirect()
+    authStore.clearPostOAuthRedirect()
+    if (isSafePath(postOAuthRedirect)) {
       router.replace(postOAuthRedirect)
       return
     }
     const postLoginRedirect = authStore.getPostLoginRedirect()
-    if (postLoginRedirect) {
-      authStore.clearPostLoginRedirect()
+    authStore.clearPostLoginRedirect()
+    if (isSafePath(postLoginRedirect)) {
       router.replace(postLoginRedirect)
       return
     }
