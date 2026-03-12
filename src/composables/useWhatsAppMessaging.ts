@@ -2,12 +2,17 @@ import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useWhatsAppStore } from '@/stores'
 import { usePoll } from './usePoll'
+import { useToast } from './useToast'
 import { fmtDateTime, sortMessagesByCreatedAt, normalizePhone, normalizePhoneInput } from './useWhatsAppFormatting'
 import type { Message } from '@/types'
 
 export const useWhatsAppMessaging = () => {
   const waStore = useWhatsAppStore()
   const { selectedConversation, conversations, n8nConfigError } = storeToRefs(waStore)
+  const { showToast } = useToast()
+
+  const _waLastConvTs = new Map<string, string>()
+  let _waTsInit = false
 
   const newMessage = ref('')
   const sendStatus = ref('')
@@ -143,13 +148,27 @@ export const useWhatsAppMessaging = () => {
 
   const loadConversations = async (_force: boolean = false) => {
     try {
+      const prevTs = new Map(_waLastConvTs)
+      const firstLoad = !_waTsInit
       await waStore.loadConversations()
       for (const conv of conversations.value as any[]) {
+        const rawTime = String(conv.time || '')
+        // Detect new messages before formatting overwrites the raw time
+        if (!firstLoad) {
+          const prev = prevTs.get(String(conv.id))
+          if (prev && rawTime && rawTime !== prev) {
+            const name = (conv as any).contact || (conv as any).phone || 'Contatto'
+            const preview = (conv as any).lastMessage ? ` · ${String((conv as any).lastMessage).slice(0, 60)}` : ''
+            showToast(`💬 WhatsApp – ${name}${preview}`, 'info', 5000)
+          }
+        }
+        if (rawTime) _waLastConvTs.set(String(conv.id), rawTime)
         if (conv.time && !conv.timeFormatted) {
           conv.timeFormatted = fmtDateTime(conv.time)
           conv.time = conv.timeFormatted
         }
       }
+      _waTsInit = true
       if (!selectedConversation.value && conversations.value.length > 0) {
         selectConversation(conversations.value[0])
       }

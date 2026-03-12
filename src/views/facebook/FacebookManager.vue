@@ -598,9 +598,26 @@ const sendDMMessage = async () => {
   } catch {}
 }
 
+const _fbLastConvTs = new Map<string, string>()
+let _fbTsInit = false
+
 const { start: startPolling, stop: stopPolling } = usePoll(async () => {
   if (!facebookPage.value || facebookAuthExpired.value) return
+  const prevTs = new Map(_fbLastConvTs)
+  const firstLoad = !_fbTsInit
   await loadConversations()
+  for (const conv of dmConversations.value) {
+    const t = String((conv as any).last_message_at || '')
+    if (!firstLoad) {
+      const prev = prevTs.get(conv.id)
+      if (prev && t && t !== prev) {
+        const name = (conv as any).contact || 'Utente'
+        showToast(`📘 Facebook – ${name}`, 'info', 5000)
+      }
+    }
+    if (t) _fbLastConvTs.set(conv.id, t)
+  }
+  _fbTsInit = true
   if (selectedDMConversation.value) await loadMessages(selectedDMConversation.value.id)
 }, { interval: 15000, immediate: false })
 

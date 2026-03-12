@@ -116,7 +116,14 @@ export const useInstagramStore = defineStore('instagram', {
           time: m.createdTime,
           created_at: m.createdTime,
           direction: m.direction,
-        }))
+        })).sort((a, b) => {
+          const ta = new Date(a.created_at || '').getTime()
+          const tb = new Date(b.created_at || '').getTime()
+          if (isNaN(ta) && isNaN(tb)) return 0
+          if (isNaN(ta)) return 1
+          if (isNaN(tb)) return -1
+          return ta - tb
+        })
       } catch (e: unknown) {
         this.errors.messages = e instanceof Error ? e.message : 'Errore messaggi Instagram'
       } finally {

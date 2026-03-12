@@ -826,9 +826,27 @@ const loadDMMessages = async (threadId: string) => {
   if (selectedDMConversation.value?.id === threadId) selectedDMConversation.value.messages = msgs
 }
 
+const _igLastConvTs = new Map<string, string>()
+let _igTsInit = false
+
 const { start: startPolling, stop: stopPolling } = usePoll(async () => {
   if (!instagramProfile.value) return
+  const prevTs = new Map(_igLastConvTs)
+  const firstLoad = !_igTsInit
   await loadDMConversations()
+  for (const conv of dmConversations.value) {
+    const t = String((conv as any).lastAt || (conv as any).time || '')
+    if (!firstLoad) {
+      const prev = prevTs.get(conv.id)
+      if (prev && t && t !== prev) {
+        const name = (conv as any).username || (conv as any).fullName || 'Utente'
+        const preview = (conv as any).lastMessage ? ` · ${String((conv as any).lastMessage).slice(0, 60)}` : ''
+        showToast(`📸 Instagram – ${name}${preview}`, 'info', 5000)
+      }
+    }
+    if (t) _igLastConvTs.set(conv.id, t)
+  }
+  _igTsInit = true
   if (selectedDMConversation.value) await loadDMMessages(selectedDMConversation.value.id)
 }, { interval: 15000, immediate: false })
 
