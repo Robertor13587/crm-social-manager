@@ -213,7 +213,7 @@
               </div>
             </div>
 
-            <div class="mt-2 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 h-64 overflow-y-auto">
+            <div ref="igMsgContainer" class="mt-2 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 h-64 overflow-y-auto">
               <div class="space-y-4">
                 <div v-if="selectedDMConversation.messages.length === 0" class="text-center text-slate-500 text-sm py-10">
                   Nessun messaggio. Inizia la conversazione!
@@ -434,7 +434,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   apiBase
@@ -484,6 +484,11 @@ const {
   next: convNext,
   reset: convPageReset,
 } = usePagination(dmConversations, 20)
+
+const igMsgContainer = ref<HTMLElement | null>(null)
+const scrollToBottom = () => nextTick(() => {
+  if (igMsgContainer.value) igMsgContainer.value.scrollTop = igMsgContainer.value.scrollHeight
+})
 
 // UI-only state (not shared)
 const newDMMessage = ref('')
@@ -847,8 +852,18 @@ const { start: startPolling, stop: stopPolling } = usePoll(async () => {
     if (t) _igLastConvTs.set(conv.id, t)
   }
   _igTsInit = true
-  if (selectedDMConversation.value) await loadDMMessages(selectedDMConversation.value.id)
 }, { interval: 15000, immediate: false })
+
+const { start: startMsgPoll, stop: stopMsgPoll } = usePoll(async () => {
+  if (selectedDMConversation.value) await loadDMMessages(selectedDMConversation.value.id)
+}, { interval: 3000, immediate: false })
+
+watch(() => selectedDMConversation.value?.id, (id) => {
+  stopMsgPoll()
+  if (id) startMsgPoll()
+})
+watch(() => selectedDMConversation.value?.messages?.length, scrollToBottom)
+watch(() => selectedDMConversation.value?.id, scrollToBottom)
 
 let refreshPromise: Promise<void> | null = null
 let refreshQueued = false

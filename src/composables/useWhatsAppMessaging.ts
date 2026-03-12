@@ -181,7 +181,7 @@ export const useWhatsAppMessaging = () => {
   const msgsPoll = usePoll(async () => {
     const conv = selectedConversation.value
     if (conv && conv.id) await loadMessages(conv.id)
-  }, { interval: 15000, backoffOnError: true, autoStart: false, immediate: false })
+  }, { interval: 3000, backoffOnError: true, autoStart: false, immediate: false })
 
   watch(n8nConfigError, (err: boolean) => {
     convPoll.currentInterval.value = err ? 120000 : 30000

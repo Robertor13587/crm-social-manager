@@ -185,7 +185,7 @@
               </div>
             </div>
 
-            <div class="mt-2 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 h-64 overflow-y-auto">
+            <div ref="fbMsgContainer" class="mt-2 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 h-64 overflow-y-auto">
               <div class="space-y-4">
                 <div v-if="dmMessages.length === 0" class="text-center text-slate-500 text-sm py-10">
                   Nessun messaggio. Inizia la conversazione!
@@ -333,7 +333,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useMetaConnection } from '@/composables/useMetaConnection'
@@ -390,6 +390,11 @@ const metaOAuthHref = computed(() => {
     scope: 'pages_show_list,pages_read_engagement,pages_messaging,instagram_basic,instagram_manage_messages,instagram_manage_comments'
   })
   return `https://www.facebook.com/v24.0/dialog/oauth?${params.toString()}`
+})
+
+const fbMsgContainer = ref<HTMLElement | null>(null)
+const scrollToBottom = () => nextTick(() => {
+  if (fbMsgContainer.value) fbMsgContainer.value.scrollTop = fbMsgContainer.value.scrollHeight
 })
 
 const searchFollowersQuery = ref('')
@@ -618,8 +623,18 @@ const { start: startPolling, stop: stopPolling } = usePoll(async () => {
     if (t) _fbLastConvTs.set(conv.id, t)
   }
   _fbTsInit = true
-  if (selectedDMConversation.value) await loadMessages(selectedDMConversation.value.id)
 }, { interval: 15000, immediate: false })
+
+const { start: startMsgPoll, stop: stopMsgPoll } = usePoll(async () => {
+  if (selectedDMConversation.value) await loadMessages(selectedDMConversation.value.id)
+}, { interval: 3000, immediate: false })
+
+watch(() => selectedDMConversation.value?.id, (id) => {
+  stopMsgPoll()
+  if (id) startMsgPoll()
+})
+watch(() => dmMessages.value.length, scrollToBottom)
+watch(() => selectedDMConversation.value?.id, scrollToBottom)
 
 watch(metaLinked, async (connected: boolean) => {
   if (connected) {
@@ -637,5 +652,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopPolling()
+  stopMsgPoll()
 })
 </script>

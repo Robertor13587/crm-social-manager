@@ -65,7 +65,7 @@
           </div>
 
           <!-- Message Bubbles -->
-          <div class="mt-2 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 h-64 overflow-y-auto">
+          <div ref="msgContainer" class="mt-2 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 h-64 overflow-y-auto">
             <div class="space-y-4">
               <div v-if="selectedConversation.messages.length === 0" class="text-center text-slate-500 text-sm py-10">
                 Nessun messaggio. Inizia la conversazione!
@@ -121,10 +121,11 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch, nextTick } from 'vue'
 import { User, MessageCircle, Phone, MoreVertical, Paperclip, Send } from 'lucide-vue-next'
 import type { WhatsAppConversation, WhatsAppTemplate } from '@/types'
 
-defineProps<{
+const props = defineProps<{
   conversations: WhatsAppConversation[]
   selectedConversation: WhatsAppConversation | null
   newMessage: string
@@ -133,6 +134,15 @@ defineProps<{
   templates: WhatsAppTemplate[]
   selectedTemplateId: string | null
 }>()
+
+const msgContainer = ref<HTMLElement | null>(null)
+
+const scrollToBottom = () => nextTick(() => {
+  if (msgContainer.value) msgContainer.value.scrollTop = msgContainer.value.scrollHeight
+})
+
+watch(() => props.selectedConversation?.messages?.length, scrollToBottom)
+watch(() => props.selectedConversation?.id, scrollToBottom)
 
 const emit = defineEmits<{
   'selectConversation': [conv: any]
