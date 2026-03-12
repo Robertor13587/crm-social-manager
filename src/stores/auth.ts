@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import { supabase } from '@/lib/supabase'
 import { authStorage, type StoredUser } from '@/services/authStorage'
+import { useInstagramStore } from './instagram'
+import { useFacebookStore } from './facebook'
+import { useWhatsAppStore } from './whatsapp'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -122,6 +125,7 @@ export const useAuthStore = defineStore('auth', {
             this.role  = user.role
           }
         } else if (event === 'SIGNED_OUT') {
+          this.clearPlatformStores()
           authStorage.clearAll()
           this.token     = null
           this.user      = null
@@ -162,7 +166,20 @@ export const useAuthStore = defineStore('auth', {
     clearPostOAuthRedirect()            { authStorage.clearPostOAuthRedirect() },
     getPostOAuthRedirect()              { return authStorage.getPostOAuthRedirect() },
 
+    /**
+     * Resetta tutti gli store delle piattaforme Meta (WhatsApp, Instagram, Facebook).
+     * Elimina dati in memoria: conversazioni, messaggi, profili, ecc.
+     * I token Meta in Supabase vengono mantenuti (sono credenziali aziendali condivise).
+     */
+    clearPlatformStores() {
+      useInstagramStore().$reset()
+      useFacebookStore().$reset()
+      useWhatsAppStore().$reset()
+    },
+
     async logout() {
+      // Prima puliamo i dati in memoria per evitare che rimangano accessibili
+      this.clearPlatformStores()
       await supabase.auth.signOut()
       authStorage.clearAll()
       this.token      = null
