@@ -369,7 +369,7 @@ const fanCount = computed(() => facebookPage.value?.fanCount ?? 0)
 const lastExpiredToastAt = ref(0)
 
 const route = useRoute()
-const { showToast } = useToast()
+const { showToast, showMessageToast } = useToast()
 const onFacebookOAuthClick = () => {
   try {
     localStorage.setItem('postOAuthRedirect', route.fullPath)
@@ -612,7 +612,7 @@ const { start: startPolling, stop: stopPolling } = usePoll(async () => {
       const prev = prevTs.get(conv.id)
       if (prev && t && t !== prev) {
         const name = (conv as any).contact || 'Utente'
-        showToast(`📘 Facebook – ${name}`, 'info', 5000)
+        showMessageToast('facebook', name)
       }
     }
     if (t) _fbLastConvTs.set(conv.id, t)

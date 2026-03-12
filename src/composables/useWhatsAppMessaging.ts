@@ -9,7 +9,7 @@ import type { Message } from '@/types'
 export const useWhatsAppMessaging = () => {
   const waStore = useWhatsAppStore()
   const { selectedConversation, conversations, n8nConfigError } = storeToRefs(waStore)
-  const { showToast } = useToast()
+  const { showMessageToast } = useToast()
 
   const _waLastConvTs = new Map<string, string>()
   let _waTsInit = false
@@ -158,8 +158,8 @@ export const useWhatsAppMessaging = () => {
           const prev = prevTs.get(String(conv.id))
           if (prev && rawTime && rawTime !== prev) {
             const name = (conv as any).contact || (conv as any).phone || 'Contatto'
-            const preview = (conv as any).lastMessage ? ` · ${String((conv as any).lastMessage).slice(0, 60)}` : ''
-            showToast(`💬 WhatsApp – ${name}${preview}`, 'info', 5000)
+            const preview = (conv as any).lastMessage ? String((conv as any).lastMessage).slice(0, 80) : undefined
+            showMessageToast('whatsapp', name, preview)
           }
         }
         if (rawTime) _waLastConvTs.set(String(conv.id), rawTime)

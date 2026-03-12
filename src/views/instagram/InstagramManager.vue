@@ -462,7 +462,7 @@ import { useInstagramStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 
 const { isConnected: metaLinked, validateConnection } = useMetaConnection()
-const { showToast } = useToast()
+const { showToast, showMessageToast } = useToast()
 const igStore = useInstagramStore()
 
 const {
@@ -840,8 +840,8 @@ const { start: startPolling, stop: stopPolling } = usePoll(async () => {
       const prev = prevTs.get(conv.id)
       if (prev && t && t !== prev) {
         const name = (conv as any).username || (conv as any).fullName || 'Utente'
-        const preview = (conv as any).lastMessage ? ` · ${String((conv as any).lastMessage).slice(0, 60)}` : ''
-        showToast(`📸 Instagram – ${name}${preview}`, 'info', 5000)
+        const preview = (conv as any).lastMessage ? String((conv as any).lastMessage).slice(0, 80) : undefined
+        showMessageToast('instagram', name, preview)
       }
     }
     if (t) _igLastConvTs.set(conv.id, t)
