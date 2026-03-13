@@ -186,6 +186,10 @@ export const useAuthStore = defineStore('auth', {
       this.user       = null
       this.role       = 'user'
       this.metaLinked = false
+      // Disconnette Meta: resetta lo stato reattivo in tutti i composable
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('meta:unlinked'))
+      }
     },
   },
 })

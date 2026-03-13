@@ -66,6 +66,7 @@ import { ref, computed } from 'vue'
 import { RefreshCw, ChevronDown, Menu } from 'lucide-vue-next'
 import { useN8nHealth } from '@/composables/useN8nHealth'
 import { authStorage } from '@/services/authStorage'
+import { useAuthStore } from '@/stores/auth'
 
 const emit = defineEmits<{ (e: 'toggleSidebar'): void }>()
 
@@ -93,9 +94,11 @@ const toggleSidebar = () => {
   emit('toggleSidebar')
 }
 
-const logout = () => {
-  authStorage.clearAll()
+const authStore = useAuthStore()
+
+const logout = async () => {
   showMenu.value = false
+  await authStore.logout()
   location.href = (import.meta.env.BASE_URL || '/') + 'login'
 }
 
