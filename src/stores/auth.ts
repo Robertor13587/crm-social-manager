@@ -180,6 +180,11 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       // Prima puliamo i dati in memoria per evitare che rimangano accessibili
       this.clearPlatformStores()
+      // Rimuove i token Meta da Supabase (sicurezza: nessun token resta sul server)
+      await supabase.from('settings').delete().in('key', [
+        'instagram.accessToken', 'instagram.pageId', 'instagram.igUserId',
+        'facebook.accessToken', 'facebook.pageId',
+      ])
       await supabase.auth.signOut()
       authStorage.clearAll()
       this.token      = null
