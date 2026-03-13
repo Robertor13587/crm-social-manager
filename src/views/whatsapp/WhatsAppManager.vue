@@ -24,13 +24,6 @@
       </div>
     </div>
 
-    <!-- Meta communication banner -->
-    <WhatsAppStatusBanner
-      :status="waStatus"
-      :display-number="waDisplayNumber"
-      :verified-name="waVerifiedName"
-    />
-
     <!-- Stats cards -->
     <WhatsAppStatsCards
       :total-messages="waTotalMessages"
@@ -38,23 +31,6 @@
       :conversations-count="conversationsCount"
       :messages-today="waMessagesToday"
     />
-
-    <!-- WA status alert (only when not APPROVED) -->
-    <div v-if="waStatus && waStatus !== 'APPROVED'" class="rounded-md p-4 border-l-4" :class="waStatusClass">
-      <div class="flex">
-        <div class="flex-shrink-0">
-          <svg class="h-5 w-5" :class="waIconClass" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M18 10c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8zm-8-3a1 1 0 00-.993.883L9 8v3a1 1 0 00.883.993L10 12h.01a1 1 0 00.993-.883L11 11V8a1 1 0 00-1-1zm0 6a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd"/>
-          </svg>
-        </div>
-        <div class="ml-3">
-          <p class="text-sm" :class="waTextClass">
-            Numero WhatsApp {{ waDisplayNumber || 'non disponibile' }} ({{ waVerifiedName || 'senza nome verificato' }}) in stato {{ waStatus }}.
-            Alcune funzioni potrebbero non essere attive finché il numero non è approvato.
-          </p>
-        </div>
-      </div>
-    </div>
 
     <!-- Tab navigation -->
     <div class="sticky top-[72px] z-20">
@@ -189,7 +165,6 @@ import { useWhatsAppFileImport } from '@/composables/useWhatsAppFileImport'
 import { RefreshCw, Plus } from 'lucide-vue-next'
 
 // Components
-import WhatsAppStatusBanner from '@/components/whatsapp/WhatsAppStatusBanner.vue'
 import WhatsAppStatsCards from '@/components/whatsapp/WhatsAppStatsCards.vue'
 import ContactsTab from '@/components/whatsapp/ContactsTab.vue'
 import MessagesTab from '@/components/whatsapp/MessagesTab.vue'
@@ -244,25 +219,6 @@ const tabs = computed(() => [
   { id: 'templates' as const, label: 'Template', count: 0 },
 ])
 
-// WA status computed classes
-const waStatusClass = computed(() => {
-  const s = (waStatus.value || '').toUpperCase()
-  if (s === 'PENDING' || s === 'IN_REVIEW') return 'border-yellow-400 bg-yellow-50'
-  if (s === 'DISABLED') return 'border-red-500 bg-red-50'
-  return 'border-gray-300 bg-gray-50'
-})
-const waIconClass = computed(() => {
-  const s = (waStatus.value || '').toUpperCase()
-  if (s === 'PENDING' || s === 'IN_REVIEW') return 'text-yellow-500'
-  if (s === 'DISABLED') return 'text-red-600'
-  return 'text-gray-500'
-})
-const waTextClass = computed(() => {
-  const s = (waStatus.value || '').toUpperCase()
-  if (s === 'PENDING' || s === 'IN_REVIEW') return 'text-yellow-800'
-  if (s === 'DISABLED') return 'text-red-700'
-  return 'text-gray-700'
-})
 
 // WA status polling
 const loadWaStatus = async () => {

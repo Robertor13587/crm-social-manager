@@ -7,25 +7,6 @@
       </div>
     </div>
 
-    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-      <div class="flex">
-        <div class="flex-shrink-0">
-          <AlertCircle class="w-5 h-5 text-yellow-400" />
-        </div>
-        <div class="ml-3">
-          <h3 class="text-sm font-medium text-yellow-800">Comunicazione Meta — Revisione integrazioni social in corso</h3>
-          <div class="mt-2 text-sm text-yellow-700 space-y-2">
-            <p>Le integrazioni WhatsApp, Instagram e Facebook sono in fase di revisione o configurazione. Alcune funzionalità possono risultare limitate finché l'approvazione non è completa.</p>
-            <ul class="list-disc list-inside">
-              <li>Per WhatsApp valgono le finestre di 24h e l'uso dei template approvati.</li>
-              <li>Su Instagram e Facebook l'invio dei messaggi e la sincronizzazione dei dati possono essere parziali durante la revisione.</li>
-              <li>I dati mostrati in questa dashboard provengono dal database locale e saranno riallineati dopo la completa approvazione.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Meta reconnect banner (shown when token expires while user is logged in) -->
     <div v-if="needsReconnect" class="bg-orange-50 border-l-4 border-orange-400 p-4">
       <div class="flex items-start justify-between gap-4">
@@ -234,7 +215,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount } from 'vue'
-import { AlertCircle, RefreshCw, WifiOff } from 'lucide-vue-next'
+import { RefreshCw, WifiOff } from 'lucide-vue-next'
 import DashboardCard from '@/components/dashboard/DashboardCard.vue'
 import { apiBase } from '@/utils/api'
 import { useMetaConnection } from '@/composables/useMetaConnection'
