@@ -362,19 +362,6 @@ async function exchangeForPageToken(userToken: string, pageId: string): Promise<
   return userToken
 }
 
-async function debugTokenPermissions(token: string): Promise<void> {
-  try {
-    const resp = await fetch(`${GRAPH_BASE}/me/permissions`, { headers: { Authorization: `Bearer ${token}` } })
-    const json: any = await resp.json().catch(() => ({}))
-    const granted = (json.data ?? []).filter((p: any) => p.status === 'granted').map((p: any) => p.permission)
-    console.info('[debugTokenPermissions] Granted permissions:', granted.join(', '))
-    const hasMsg = granted.includes('instagram_manage_messages')
-    const hasPages = granted.includes('pages_messaging')
-    console.info(`[debugTokenPermissions] instagram_manage_messages: ${hasMsg ? '✅' : '❌'} | pages_messaging: ${hasPages ? '✅' : '❌'}`)
-  } catch (e) {
-    console.warn('[debugTokenPermissions] Failed:', e)
-  }
-}
 
 async function getIgConfig(): Promise<IgConfig> {
   const now = Date.now()
@@ -398,7 +385,6 @@ async function getIgConfig(): Promise<IgConfig> {
     throw new Error('Instagram credentials not configured in Supabase settings.')
   }
 
-  await debugTokenPermissions(accessToken)
   const pageToken = await exchangeForPageToken(accessToken, pageId)
 
   const cfg: IgConfig = {
@@ -452,19 +438,11 @@ export async function getIgProfile() {
 export async function listIgConversations(limit = 10, after?: string): Promise<{ data: IgConversation[]; nextCursor: string | null }> {
   const cfg = await getIgConfig()
 
-  // Diagnostic: verify the Page is connected to an Instagram account
-  // Visible in Network tab as GET /v24.0/{pageId}?fields=instagram_accounts
-  const diagResp = await fetch(`${GRAPH_BASE}/${cfg.pageId}?fields=instagram_accounts`, {
-    headers: { Authorization: `Bearer ${cfg.pageToken}` }
-  })
-  const diagJson: any = await diagResp.json().catch(() => ({}))
-  console.info('[IG DIAG] Page instagram_accounts:', JSON.stringify(diagJson))
-
-  const fields = 'id,updated_time'
-  const qs = new URLSearchParams({ fields, limit: String(limit), platform: 'instagram' })
+  const fields = 'id,participants{id,name},updated_time'
+  const qs = new URLSearchParams({ fields, limit: String(limit) })
   if (after) qs.set('after', after)
-  const url = `${GRAPH_BASE}/${cfg.pageId}/conversations?${qs}`
-  const resp = await fetch(url, { headers: { Authorization: `Bearer ${cfg.pageToken}` } })
+  const url = `${GRAPH_BASE}/${cfg.igUserId}/conversations?${qs}`
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${cfg.accessToken}` } })
   const json: any = await resp.json().catch(() => ({}))
   if (!resp.ok || json.error) {
     console.error('[listIgConversations] API error:', JSON.stringify(json))
