@@ -432,7 +432,7 @@ export async function getIgProfile() {
 
 export async function listIgConversations(limit = 10, after?: string): Promise<{ data: IgConversation[]; nextCursor: string | null }> {
   const cfg = await getIgConfig()
-  const fields = 'id,participants{id,name},updated_time'
+  const fields = 'id,updated_time'
   const qs = new URLSearchParams({ fields, limit: String(limit), platform: 'instagram' })
   if (after) qs.set('after', after)
   const url = `${GRAPH_BASE}/${cfg.pageId}/conversations?${qs}`
