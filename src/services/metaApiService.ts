@@ -407,7 +407,7 @@ export async function getIgProfile() {
 
 export async function listIgConversations(limit = 10, after?: string): Promise<{ data: IgConversation[]; nextCursor: string | null }> {
   const cfg = await getIgConfig()
-  const fields = 'id,participants{id,username,name},messages{id,message,from,created_time},updated_time'
+  const fields = 'id,participants{id,username,name},updated_time'
   const qs = new URLSearchParams({ fields, limit: String(limit), platform: 'instagram' })
   if (after) qs.set('after', after)
   const url = `${GRAPH_BASE}/${cfg.pageId}/conversations?${qs}`
@@ -419,14 +419,12 @@ export async function listIgConversations(limit = 10, after?: string): Promise<{
   const convData: IgConversation[] = (Array.isArray(json.data) ? json.data : []).map((c: any) => {
     const participants: any[] = c.participants?.data ?? []
     const other = participants.find((p: any) => p.id !== igUserId) ?? participants[0] ?? {}
-    const msgs: any[] = c.messages?.data ?? []
-    const last = msgs[0]
     return {
       id: c.id ?? '',
       participantId: other.id ?? '',
       participantUsername: other.username ?? '',
       participantName: other.name ?? other.username ?? '',
-      lastMessage: last?.message ?? '',
+      lastMessage: '',
       lastAt: c.updated_time ?? '',
     }
   })
