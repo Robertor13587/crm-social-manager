@@ -330,7 +330,8 @@ export async function sendWaTemplate(params: WaSendTemplateParams): Promise<WaSe
 // Profile uses the IG Graph API (/{igUserId}?fields=...)
 
 interface IgConfig {
-  accessToken: string
+  accessToken: string  // user access token (or page token if already stored as such)
+  pageToken: string    // page access token — required for /conversations?platform=instagram
   pageId: string
   igUserId: string
 }
@@ -338,6 +339,24 @@ interface IgConfig {
 let _igConfigCache: IgConfig | null = null
 let _igConfigCacheAt = 0
 const IG_CONFIG_TTL_MS = 5 * 60 * 1000
+
+/**
+ * Exchanges a User Access Token for a Page Access Token.
+ * Required because /{pageId}/conversations?platform=instagram only accepts Page ATs.
+ * If the stored token is already a Page AT, this call still works and returns the same/refreshed token.
+ */
+async function exchangeForPageToken(userToken: string, pageId: string): Promise<string> {
+  try {
+    const url = `${GRAPH_BASE}/${pageId}?fields=access_token`
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${userToken}` } })
+    const json: any = await resp.json().catch(() => ({}))
+    if (resp.ok && json.access_token) return json.access_token
+    console.warn('[exchangeForPageToken] Could not exchange token, falling back to stored token:', json?.error?.message)
+  } catch (e) {
+    console.warn('[exchangeForPageToken] Exchange failed, falling back:', e)
+  }
+  return userToken
+}
 
 async function getIgConfig(): Promise<IgConfig> {
   const now = Date.now()
@@ -354,14 +373,20 @@ async function getIgConfig(): Promise<IgConfig> {
   const map: Record<string, string> = {}
   for (const row of data ?? []) map[row.key] = row.value ?? ''
 
-  const cfg: IgConfig = {
-    accessToken: map['instagram.accessToken'] ?? '',
-    pageId: map['instagram.pageId'] ?? '',
-    igUserId: map['instagram.igUserId'] ?? '',
+  const accessToken = map['instagram.accessToken'] ?? ''
+  const pageId = map['instagram.pageId'] ?? ''
+
+  if (!accessToken || !pageId) {
+    throw new Error('Instagram credentials not configured in Supabase settings.')
   }
 
-  if (!cfg.accessToken || !cfg.pageId) {
-    throw new Error('Instagram credentials not configured in Supabase settings.')
+  const pageToken = await exchangeForPageToken(accessToken, pageId)
+
+  const cfg: IgConfig = {
+    accessToken,
+    pageToken,
+    pageId,
+    igUserId: map['instagram.igUserId'] ?? '',
   }
 
   _igConfigCache = cfg
@@ -407,11 +432,11 @@ export async function getIgProfile() {
 
 export async function listIgConversations(limit = 10, after?: string): Promise<{ data: IgConversation[]; nextCursor: string | null }> {
   const cfg = await getIgConfig()
-  const fields = 'id,participants{id,username,name},updated_time'
+  const fields = 'id,participants{id,name},updated_time'
   const qs = new URLSearchParams({ fields, limit: String(limit), platform: 'instagram' })
   if (after) qs.set('after', after)
   const url = `${GRAPH_BASE}/${cfg.pageId}/conversations?${qs}`
-  const resp = await fetch(url, { headers: { Authorization: `Bearer ${cfg.accessToken}` } })
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${cfg.pageToken}` } })
   const json: any = await resp.json().catch(() => ({}))
   if (!resp.ok || json.error) {
     console.error('[listIgConversations] API error:', JSON.stringify(json))
@@ -425,8 +450,8 @@ export async function listIgConversations(limit = 10, after?: string): Promise<{
     return {
       id: c.id ?? '',
       participantId: other.id ?? '',
-      participantUsername: other.username ?? '',
-      participantName: other.name ?? other.username ?? '',
+      participantUsername: other.name ?? '',
+      participantName: other.name ?? '',
       lastMessage: '',
       lastAt: c.updated_time ?? '',
     }
@@ -440,7 +465,7 @@ export async function getIgMessages(threadId: string, limit = 50): Promise<IgMes
   const fields = 'id,message,from,created_time'
   const qs = new URLSearchParams({ fields, limit: String(limit) })
   const url = `${GRAPH_BASE}/${threadId}/messages?${qs}`
-  const resp = await fetch(url, { headers: { Authorization: `Bearer ${cfg.accessToken}` } })
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${cfg.pageToken}` } })
   const json: any = await resp.json().catch(() => ({}))
   if (!resp.ok || json.error) throw new Error(json?.error?.message || `HTTP ${resp.status}`)
 
@@ -458,7 +483,7 @@ export async function sendIgDM(recipientId: string, text: string): Promise<WaSen
   const url = `${GRAPH_BASE}/${cfg.pageId}/messages`
   const resp = await fetch(url, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${cfg.accessToken}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${cfg.pageToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       recipient: { id: recipientId },
       message: { text },
