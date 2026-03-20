@@ -439,10 +439,10 @@ export async function listIgConversations(limit = 10, after?: string): Promise<{
   const cfg = await getIgConfig()
 
   const fields = 'id,participants{id,name},updated_time'
-  const qs = new URLSearchParams({ fields, limit: String(limit) })
+  const qs = new URLSearchParams({ fields, limit: String(limit), platform: 'instagram' })
   if (after) qs.set('after', after)
-  const url = `${GRAPH_BASE}/${cfg.igUserId}/conversations?${qs}`
-  const resp = await fetch(url, { headers: { Authorization: `Bearer ${cfg.accessToken}` } })
+  const url = `${GRAPH_BASE}/${cfg.pageId}/conversations?${qs}`
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${cfg.pageToken}` } })
   const json: any = await resp.json().catch(() => ({}))
   if (!resp.ok || json.error) {
     console.error('[listIgConversations] API error:', JSON.stringify(json))
