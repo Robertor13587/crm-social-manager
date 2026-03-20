@@ -350,12 +350,30 @@ async function exchangeForPageToken(userToken: string, pageId: string): Promise<
     const url = `${GRAPH_BASE}/${pageId}?fields=access_token`
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${userToken}` } })
     const json: any = await resp.json().catch(() => ({}))
-    if (resp.ok && json.access_token) return json.access_token
-    console.warn('[exchangeForPageToken] Could not exchange token, falling back to stored token:', json?.error?.message)
+    if (resp.ok && json.access_token) {
+      console.info('[exchangeForPageToken] ✅ Page token obtained successfully')
+      return json.access_token
+    }
+    console.warn('[exchangeForPageToken] ❌ Could not exchange token:', JSON.stringify(json))
   } catch (e) {
-    console.warn('[exchangeForPageToken] Exchange failed, falling back:', e)
+    console.warn('[exchangeForPageToken] ❌ Exchange failed:', e)
   }
+  console.warn('[exchangeForPageToken] Using original token as fallback')
   return userToken
+}
+
+async function debugTokenPermissions(token: string): Promise<void> {
+  try {
+    const resp = await fetch(`${GRAPH_BASE}/me/permissions`, { headers: { Authorization: `Bearer ${token}` } })
+    const json: any = await resp.json().catch(() => ({}))
+    const granted = (json.data ?? []).filter((p: any) => p.status === 'granted').map((p: any) => p.permission)
+    console.info('[debugTokenPermissions] Granted permissions:', granted.join(', '))
+    const hasMsg = granted.includes('instagram_manage_messages')
+    const hasPages = granted.includes('pages_messaging')
+    console.info(`[debugTokenPermissions] instagram_manage_messages: ${hasMsg ? '✅' : '❌'} | pages_messaging: ${hasPages ? '✅' : '❌'}`)
+  } catch (e) {
+    console.warn('[debugTokenPermissions] Failed:', e)
+  }
 }
 
 async function getIgConfig(): Promise<IgConfig> {
@@ -380,6 +398,7 @@ async function getIgConfig(): Promise<IgConfig> {
     throw new Error('Instagram credentials not configured in Supabase settings.')
   }
 
+  await debugTokenPermissions(accessToken)
   const pageToken = await exchangeForPageToken(accessToken, pageId)
 
   const cfg: IgConfig = {
