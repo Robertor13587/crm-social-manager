@@ -413,7 +413,10 @@ export async function listIgConversations(limit = 10, after?: string): Promise<{
   const url = `${GRAPH_BASE}/${cfg.pageId}/conversations?${qs}`
   const resp = await fetch(url, { headers: { Authorization: `Bearer ${cfg.accessToken}` } })
   const json: any = await resp.json().catch(() => ({}))
-  if (!resp.ok || json.error) throw new Error(json?.error?.message || `HTTP ${resp.status}`)
+  if (!resp.ok || json.error) {
+    console.error('[listIgConversations] API error:', JSON.stringify(json))
+    throw new Error(json?.error?.message || `HTTP ${resp.status}`)
+  }
 
   const igUserId = cfg.igUserId
   const convData: IgConversation[] = (Array.isArray(json.data) ? json.data : []).map((c: any) => {
